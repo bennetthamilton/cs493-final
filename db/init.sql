@@ -56,6 +56,6 @@ VALUES (
   1,
   'Admin User',
   'admin@example.com',
-  '$2b$10$CwTycUXWue0Thq9StjUM0uJ8zT7M5b9R3eNQKONxI5Y2fK8kPqJ8i',
+  '$2b$10$TDgiKA09dF1mWTpCVapALOZXk7b8Jaon65u5hKNk0y5YAGCmBXzLq',
   'admin'
 );
