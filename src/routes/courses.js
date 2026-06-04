@@ -171,7 +171,7 @@ router.get('/:id', async (req, res) => {
 });
 
 
-router.patch('/:id', requireAuth, requireRole('admin'), async (req, res) => {
+router.patch('/:id', requireAuth, async (req, res) => {
   const courseId = Number(req.params.id);
   const { subject, number, title, term, instructorId } = req.body;
 
@@ -227,6 +227,16 @@ router.patch('/:id', requireAuth, requireRole('admin'), async (req, res) => {
     if (!existingCourse) {
       return res.status(404).json({
         error: 'Specified course not found'
+      });
+    }
+
+    const isAdmin = req.user.role === 'admin';
+    const isCourseInstructor =
+      req.user.role === 'instructor' && req.user.id === existingCourse.instructorId;
+
+    if (!isAdmin && !isCourseInstructor) {
+      return res.status(403).json({
+        error: 'Insufficient permissions'
       });
     }
 
