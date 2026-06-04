@@ -415,10 +415,7 @@ router.get('/:id/submissions', requireAuth, async (req, res) => {
   const page = Math.max(Number(req.query.page) || 1, 1);
   const offset = (page - 1) * PAGE_SIZE;
 
-  const limit = Number(PAGE_SIZE);
-  const safeOffset = Number(offset);
-
-  if (!isPositiveInteger(assignmentId)) {
+  if (!Number.isInteger(assignmentId) || assignmentId < 1) {
     return res.status(400).json({
       error: 'Assignment ID must be a positive integer'
     });
@@ -433,11 +430,34 @@ router.get('/:id/submissions', requireAuth, async (req, res) => {
       });
     }
 
-    if (!canManageAssignment(req.user, assignment)) {
+    const isAdmin = req.user.role === 'admin';
+    const isCourseInstructor =
+      req.user.role === 'instructor' &&
+      Number(req.user.id) === Number(assignment.course.instructorId);
+
+    if (!isAdmin && !isCourseInstructor) {
       return res.status(403).json({
         error: 'Insufficient permissions'
       });
     }
+
+    const filters = ['assignment_id = ?'];
+    const values = [assignmentId];
+
+    if (req.query.studentId !== undefined) {
+      const studentId = Number(req.query.studentId);
+
+      if (!Number.isInteger(studentId) || studentId < 1) {
+        return res.status(400).json({
+          error: 'studentId must be a positive integer'
+        });
+      }
+
+      filters.push('student_id = ?');
+      values.push(studentId);
+    }
+
+    const whereClause = `WHERE ${filters.join(' AND ')}`;
 
     const [submissions] = await db.execute(
       `
@@ -446,38 +466,45 @@ router.get('/:id/submissions', requireAuth, async (req, res) => {
           assignment_id AS assignmentId,
           student_id AS studentId,
           timestamp,
-          grade,
-          file_url AS file
+          file
         FROM submissions
-        WHERE assignment_id = ?
+        ${whereClause}
         ORDER BY timestamp DESC
-        LIMIT ${limit} OFFSET ${safeOffset}
+        LIMIT ? OFFSET ?
       `,
-      [assignmentId, PAGE_SIZE, offset]
+      [...values, PAGE_SIZE, offset]
     );
 
     const [countRows] = await db.execute(
       `
         SELECT COUNT(*) AS count
         FROM submissions
-        WHERE assignment_id = ?
+        ${whereClause}
       `,
-      [assignmentId]
+      values
     );
 
     const count = countRows[0].count;
-    const totalPages = Math.ceil(count / PAGE_SIZE);
+    const lastPage = Math.ceil(count / PAGE_SIZE);
 
     const response = {
       submissions,
       page,
-      totalPages,
+      totalPages: lastPage,
       pageSize: PAGE_SIZE,
       totalCount: count
     };
 
-    if (page < totalPages) {
-      response.nextPage = `/assignments/${assignmentId}/submissions?page=${page + 1}`;
+    if (page < lastPage) {
+      const queryParams = new URLSearchParams();
+
+      queryParams.set('page', page + 1);
+
+      if (req.query.studentId !== undefined) {
+        queryParams.set('studentId', req.query.studentId);
+      }
+
+      response.nextPage = `/assignments/${assignmentId}/submissions?${queryParams.toString()}`;
     }
 
     return res.status(200).json(response);
