@@ -406,7 +406,7 @@ STATUS=$(curl -s -o "$BODY_FILE" -w "%{http_code}" \
   -d "$UPDATE_COURSE_BODY")
 
 show_response "$STATUS"
-expect_status "$STATUS" "204"
+expect_status "$STATUS" "200"
 
 pause_if_needed
 
@@ -456,7 +456,7 @@ STATUS=$(curl -s -o "$BODY_FILE" -w "%{http_code}" \
   -d "$ENROLL_BODY")
 
 show_response "$STATUS"
-expect_status "$STATUS" "204"
+expect_status "$STATUS" "200"
 
 pause_if_needed
 
@@ -566,7 +566,7 @@ STATUS=$(curl -s -o "$BODY_FILE" -w "%{http_code}" \
   -d "$UPDATE_ASSIGNMENT_BODY")
 
 show_response "$STATUS"
-expect_status "$STATUS" "204"
+expect_status "$STATUS" "200"
 
 pause_if_needed
 

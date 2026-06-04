@@ -270,7 +270,7 @@ router.patch('/:id', requireAuth, async (req, res) => {
       values
     );
 
-    return res.status(204).send();
+    return res.status(200).send();
   } catch (err) {
     console.error(err);
     return res.status(500).json({
