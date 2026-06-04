@@ -49,6 +49,28 @@ router.get('/', async (req, res) => {
   const limit = Number(PAGE_SIZE);
   const safeOffset = Number(offset);
 
+  const filters = [];
+  const values = [];
+
+  if (req.query.subject !== undefined) {
+    filters.push('subject = ?');
+    values.push(req.query.subject);
+  }
+
+  if (req.query.number !== undefined) {
+    filters.push('number = ?');
+    values.push(req.query.number);
+  }
+
+  if (req.query.term !== undefined) {
+    filters.push('term = ?');
+    values.push(req.query.term);
+  }
+
+  const whereClause = filters.length > 0
+    ? `WHERE ${filters.join(' AND ')}`
+    : '';
+
   try {
     const [courses] = await db.execute(
       `
@@ -60,17 +82,20 @@ router.get('/', async (req, res) => {
           term,
           instructor_id AS instructorId
         FROM courses
+        ${whereClause}
         ORDER BY id
         LIMIT ${limit} OFFSET ${safeOffset}
       `,
-      [PAGE_SIZE, offset]
+      [...values, PAGE_SIZE, offset]
     );
 
     const [countRows] = await db.execute(
       `
         SELECT COUNT(*) AS count
         FROM courses
-      `
+        ${whereClause}
+      `,
+      values
     );
 
     const count = countRows[0].count;
@@ -85,7 +110,23 @@ router.get('/', async (req, res) => {
     };
 
     if (page < lastPage) {
-      response.nextPage = `/courses?page=${page + 1}`;
+      const queryParams = new URLSearchParams();
+
+      queryParams.set('page', page + 1);
+
+      if (req.query.subject !== undefined) {
+        queryParams.set('subject', req.query.subject);
+      }
+
+      if (req.query.number !== undefined) {
+        queryParams.set('number', req.query.number);
+      }
+
+      if (req.query.term !== undefined) {
+        queryParams.set('term', req.query.term);
+      }
+
+      response.nextPage = `/courses?${queryParams.toString()}`;
     }
 
     return res.status(200).json(response);
