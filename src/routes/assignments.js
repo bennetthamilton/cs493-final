@@ -90,7 +90,10 @@ function canManageCourse(user, course) {
 function canManageAssignment(user, assignment) {
   return (
     user.role === 'admin' ||
-    (user.role === 'instructor' && user.id === assignment.instructorId)
+    (
+      user.role === 'instructor' &&
+      Number(user.id) === Number(assignment.instructorId)
+    )
   );
 }
 
@@ -415,7 +418,10 @@ router.get('/:id/submissions', requireAuth, async (req, res) => {
   const page = Math.max(Number(req.query.page) || 1, 1);
   const offset = (page - 1) * PAGE_SIZE;
 
-  if (!Number.isInteger(assignmentId) || assignmentId < 1) {
+  const limit = Number(PAGE_SIZE);
+  const safeOffset = Number(offset);
+
+  if (!isPositiveInteger(assignmentId)) {
     return res.status(400).json({
       error: 'Assignment ID must be a positive integer'
     });
@@ -430,12 +436,7 @@ router.get('/:id/submissions', requireAuth, async (req, res) => {
       });
     }
 
-    const isAdmin = req.user.role === 'admin';
-    const isCourseInstructor =
-      req.user.role === 'instructor' &&
-      Number(req.user.id) === Number(assignment.course.instructorId);
-
-    if (!isAdmin && !isCourseInstructor) {
+    if (!canManageAssignment(req.user, assignment)) {
       return res.status(403).json({
         error: 'Insufficient permissions'
       });
@@ -447,7 +448,7 @@ router.get('/:id/submissions', requireAuth, async (req, res) => {
     if (req.query.studentId !== undefined) {
       const studentId = Number(req.query.studentId);
 
-      if (!Number.isInteger(studentId) || studentId < 1) {
+      if (!isPositiveInteger(studentId)) {
         return res.status(400).json({
           error: 'studentId must be a positive integer'
         });
@@ -466,11 +467,12 @@ router.get('/:id/submissions', requireAuth, async (req, res) => {
           assignment_id AS assignmentId,
           student_id AS studentId,
           timestamp,
-          file
+          grade,
+          file_url AS file
         FROM submissions
         ${whereClause}
         ORDER BY timestamp DESC
-        LIMIT ? OFFSET ?
+        LIMIT ${limit} OFFSET ${safeOffset}
       `,
       [...values, PAGE_SIZE, offset]
     );
@@ -485,17 +487,17 @@ router.get('/:id/submissions', requireAuth, async (req, res) => {
     );
 
     const count = countRows[0].count;
-    const lastPage = Math.ceil(count / PAGE_SIZE);
+    const totalPages = Math.ceil(count / PAGE_SIZE);
 
     const response = {
       submissions,
       page,
-      totalPages: lastPage,
+      totalPages,
       pageSize: PAGE_SIZE,
       totalCount: count
     };
 
-    if (page < lastPage) {
+    if (page < totalPages) {
       const queryParams = new URLSearchParams();
 
       queryParams.set('page', page + 1);
