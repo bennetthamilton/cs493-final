@@ -58,7 +58,7 @@ router.get('/', async (req, res) => {
           instructor_id AS instructorId
         FROM courses
         ORDER BY id
-        LIMIT ? OFFSET ?
+        LIMIT ${limit} OFFSET ${safeOffset}
       `,
       [PAGE_SIZE, offset]
     );

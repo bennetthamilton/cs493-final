@@ -448,7 +448,7 @@ router.get('/:id/submissions', requireAuth, async (req, res) => {
         FROM submissions
         WHERE assignment_id = ?
         ORDER BY timestamp DESC
-        LIMIT ? OFFSET ?
+        LIMIT ${limit} OFFSET ${safeOffset}
       `,
       [assignmentId, PAGE_SIZE, offset]
     );
