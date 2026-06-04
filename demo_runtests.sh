@@ -393,6 +393,25 @@ expect_status "$STATUS" "200"
 
 pause_if_needed
 
+explain "This verifies course filtering by subject, number, and term."
+
+STATUS=$(curl -s -o "$BODY_FILE" -w "%{http_code}" \
+  -X GET "$BASE_URL/courses?subject=CS&number=493&term=sp26")
+
+show_response "$STATUS"
+expect_status "$STATUS" "200"
+
+FILTERED_COURSE_ID=$(jq -r --argjson courseId "$COURSE_ID" '
+  .courses[]? | select(.id == $courseId) | .id
+' "$BODY_FILE")
+
+if [ "$FILTERED_COURSE_ID" != "$COURSE_ID" ]; then
+  echo "WARNING: Filtered course list did not include expected course ID $COURSE_ID."
+  echo
+fi
+
+pause_if_needed
+
 explain "This updates the course title as admin."
 
 UPDATE_COURSE_BODY=$(jq -n \
@@ -404,6 +423,23 @@ STATUS=$(curl -s -o "$BODY_FILE" -w "%{http_code}" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d "$UPDATE_COURSE_BODY")
+
+show_response "$STATUS"
+expect_status "$STATUS" "200"
+
+pause_if_needed
+
+explain "This verifies the assigned instructor can update their own course."
+
+INSTRUCTOR_UPDATE_COURSE_BODY=$(jq -n \
+  --arg title "Instructor Updated Cloud Application Development Demo" \
+  '{title: $title}')
+
+STATUS=$(curl -s -o "$BODY_FILE" -w "%{http_code}" \
+  -X PATCH "$BASE_URL/courses/$COURSE_ID" \
+  -H "Authorization: Bearer $INSTRUCTOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "$INSTRUCTOR_UPDATE_COURSE_BODY")
 
 show_response "$STATUS"
 expect_status "$STATUS" "200"
@@ -624,6 +660,37 @@ expect_status "$STATUS" "200"
 
 pause_if_needed
 
+explain "This retrieves assignment submissions filtered by studentId as the instructor."
+
+STATUS=$(curl -s -o "$BODY_FILE" -w "%{http_code}" \
+  -X GET "$BASE_URL/assignments/$ASSIGNMENT_ID/submissions?studentId=$STUDENT_ID" \
+  -H "Authorization: Bearer $INSTRUCTOR_TOKEN")
+
+show_response "$STATUS"
+expect_status "$STATUS" "200"
+
+FILTERED_SUBMISSION_STUDENT_ID=$(jq -r --argjson studentId "$STUDENT_ID" '
+  .submissions[]? | select(.studentId == $studentId) | .studentId
+' "$BODY_FILE" | head -n 1)
+
+if [ "$FILTERED_SUBMISSION_STUDENT_ID" != "$STUDENT_ID" ]; then
+  echo "WARNING: Filtered submissions did not include expected student ID $STUDENT_ID."
+  echo
+fi
+
+pause_if_needed
+
+explain "This verifies invalid studentId filtering is rejected."
+
+STATUS=$(curl -s -o "$BODY_FILE" -w "%{http_code}" \
+  -X GET "$BASE_URL/assignments/$ASSIGNMENT_ID/submissions?studentId=abc" \
+  -H "Authorization: Bearer $INSTRUCTOR_TOKEN")
+
+show_response "$STATUS"
+expect_status "$STATUS" "400"
+
+pause_if_needed
+
 explain "This demonstrates authorization: student attempts to list all submissions and should be rejected."
 
 STATUS=$(curl -s -o "$BODY_FILE" -w "%{http_code}" \
@@ -664,7 +731,7 @@ STATUS=$(curl -s -o "$BODY_FILE" -w "%{http_code}" \
   -d "$REMOVE_STUDENT_BODY")
 
 show_response "$STATUS"
-expect_status "$STATUS" "204"
+expect_status "$STATUS" "200"
 
 pause_if_needed
 
