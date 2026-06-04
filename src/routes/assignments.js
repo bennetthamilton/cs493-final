@@ -415,6 +415,9 @@ router.get('/:id/submissions', requireAuth, async (req, res) => {
   const page = Math.max(Number(req.query.page) || 1, 1);
   const offset = (page - 1) * PAGE_SIZE;
 
+  const limit = Number(PAGE_SIZE);
+  const safeOffset = Number(offset);
+
   if (!isPositiveInteger(assignmentId)) {
     return res.status(400).json({
       error: 'Assignment ID must be a positive integer'

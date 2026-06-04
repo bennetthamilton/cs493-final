@@ -46,6 +46,9 @@ router.get('/', async (req, res) => {
   const page = Math.max(Number(req.query.page) || 1, 1);
   const offset = (page - 1) * PAGE_SIZE;
 
+  const limit = Number(PAGE_SIZE);
+  const safeOffset = Number(offset);
+
   try {
     const [courses] = await db.execute(
       `
