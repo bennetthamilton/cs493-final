@@ -13,6 +13,9 @@
 # Run:
 #   chmod +x demo_runtests.sh
 #   STEP_THROUGH=1 ./demo_runtests.sh
+#
+#   OR (without stepping):
+#   ./demo_runtests.sh
 # =====================================================================
 
 set -u
